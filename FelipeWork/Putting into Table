@@ -1,0 +1,60 @@
+from fastapi import FastAPI, Depends
+from fastapi.security import OAuth2AuthorizationCodeBearer, OAuth2AuthorizationCodeRequestForm
+from google.oauth2.credentials import Credentials
+from google.oauth2 import id_token
+from google.auth.transport.requests import Request
+import requests
+
+app = FastAPI()
+
+oauth2_scheme = OAuth2AuthorizationCodeBearer(
+    authorizationUrl="https://accounts.google.com/o/oauth2/v2/auth",
+    tokenUrl="https://oauth2.googleapis.com/token",
+)
+
+CLIENT_ID = "CLIENT_ID"
+CLIENT_SECRET = "CLIENT_SECRET"
+REDIRECT_URI = "REDIRECT_URI"
+
+@app.get("/login")
+def login_via_google():
+    params = {
+        "client_id": CLIENT_ID,
+        "response_type": "code",
+        "redirect_uri": REDIRECT_URI,
+        "scope": "openid email profile",
+    }
+    return {"url": oauth2_scheme.authorization_url(**params)}
+
+@app.post("/auth")
+def authenticate_via_google(form_data: OAuth2AuthorizationCodeRequestForm = Depends()):
+    # Exchange authorization code for access token
+    data = {
+        "code": form_data.code,
+        "client_id": CLIENT_ID,
+        "client_secret": CLIENT_SECRET,
+        "redirect_uri": REDIRECT_URI,
+        "grant_type": "authorization_code",
+    }
+    token_response = requests.post(
+        "https://oauth2.googleapis.com/token",
+        data=data,
+    )
+    token_response.raise_for_status()
+    access_token = token_response.json()["access_token"]
+    
+    # Retrieve user info
+    credentials = Credentials.from_authorized_user_info(info=id_token.verify_oauth2_token(access_token, Request()), audience=CLIENT_ID)
+    user_info = requests.get(f"https://openidconnect.googleapis.com/v1/userinfo?access_token={access_token}").json()
+    
+    # Do something with user info (e.g. store it in database, create session, etc.)
+    # ...
+
+    return {"access_token": access_token, "token_type": "bearer"}
+
+# MySQL data table can be implemented here
+# ...
+
+@app.get("/me")
+def read_users_me(current_user: dict = Depends(oauth2_scheme)):
+    return current_user

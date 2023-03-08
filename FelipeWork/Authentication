@@ -1,0 +1,60 @@
+import webbrowser
+from tkinter import *
+import urllib.parse
+
+CLIENT_ID = "CLIENT_ID"
+REDIRECT_URI = "REDIRECT_URI"
+
+# base URL for the Gmail API authentication endpoint
+AUTH_URL = "https://mail.google.com/"
+
+class LoginWindow:
+
+    def __init__(self, master):
+        self.master = master
+        self.master.geometry("300x150")
+        self.master.title("Gmail Login")
+        
+        # label and button for the login page
+        self.label = Label(self.master, text="Please login to your Gmail account")
+        self.label.pack()
+        self.button = Button(self.master, text="Login", command=self.login)
+        self.button.pack()
+
+    def login(self):
+        # Defines the OAuth2 scopes to request
+        SCOPES = "https://www.googleapis.com"
+        
+        # Encode the scopes and redirect URI as URL parameters
+        params = urllib.parse.urlencode({
+            "scope": SCOPES,
+            "redirect_uri": REDIRECT_URI,
+            "response_type": "token",
+            "client_id": CLIENT_ID,
+            "prompt": "select_account",
+        })
+        
+        # Create the full URL for the authentication request
+        auth_url = f"{AUTH_URL}?{params}"
+        
+        # Open a web browser window to the authentication URL
+        webbrowser.open_new(auth_url)
+        
+        # Create a new window to display the validation screen
+        self.validate_window = Toplevel(self.master)
+        self.validate_window.geometry("300x150")
+        self.validate_window.title("Validation")
+        
+        # Create a label for the validation screen
+        self.validate_label = Label(self.validate_window, text="Validating login...")
+        self.validate_label.pack()
+        
+        # Wait for the user to close the validation screen before ending the program
+        self.master.wait_window(self.validate_window)
+
+# Start the login page
+root = Tk()
+login = LoginWindow(root)
+root.mainloop()
+
+#FAST API GOOGLE AUTHORIZATION
